@@ -49,7 +49,9 @@ namespace Player
     
         private void Update()
         {
-            isMouseButtonDown = Input.GetMouseButtonDown(0);
+            if(!isMouseButtonDown)
+                isMouseButtonDown = Input.GetMouseButtonDown(0);
+
             MovementInputUpdate();
         }
 

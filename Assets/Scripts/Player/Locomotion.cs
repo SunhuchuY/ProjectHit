@@ -13,14 +13,52 @@ public class Locomotion : MonoBehaviour
     private CharacterController _characterController;
     private Player.InputManager _inputManager;
 
+    // Player
+    [SerializeField] private Player.VFXManager _playerVFXManager;
+
     // Enemy
     [SerializeField] private bool _isPlayer = true;
+    [SerializeField] private Enemy.VFXManager _enemyVFXManager;
     private UnityEngine.AI.NavMeshAgent _navMeshAgent;
     private Transform _targetPlayer;
 
+    // Attack Slide
+    private float enemyAttackkTurnStartTime;
+    [SerializeField] private float enemyAttackTurnDuration = 0.4f;
+    [SerializeField] private float enemyAttackTurnSpeed = 0.06f;
+
+    // Health
+    private Health _health;
+
+    // DamageCaster
+    private DamageCaster _damageCaster;
+
+    // Attack Slide
+    private float attackStartTime;
+    [SerializeField] private float attackSlideDuration = 0.4f;
+    [SerializeField] private float attackSlideSpeed = 0.06f;
+
+    // Being Hit
+    private Vector3 _impactOnCharacter;
+
+    // Material Animation
+    private SkinnedMeshRenderer _skinnedMeshRenderer;
+    private MaterialPropertyBlock _materialPropertyBlock;
+
+    // Drop Item
+    [SerializeField] private GameObject _dropItem;
+
+    // Invincible
+    private bool _isInvincible;
+    private float _invincibleDuration;
+
+    // Item
+    private int _coin;
+
+
     public enum State
     {
-        Normal, Attacking
+        Normal, Attacking, Dead, BeingHit
     }
 
     private State currentState = State.Normal;
@@ -30,6 +68,12 @@ public class Locomotion : MonoBehaviour
     {
         _characterController = GetComponent<CharacterController>();  
         _animator = GetComponent<Animator>();
+        _health = GetComponent<Health>();
+        _damageCaster = GetComponentInChildren<DamageCaster>(); 
+
+        _skinnedMeshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        _materialPropertyBlock = new MaterialPropertyBlock();
+        _skinnedMeshRenderer.GetPropertyBlock(_materialPropertyBlock);
 
         if (_isPlayer)
         {
@@ -60,6 +104,60 @@ public class Locomotion : MonoBehaviour
                 break;
             
             case State.Attacking:
+
+                if (_isPlayer)
+                {
+                    string currentClipName = _animator.GetCurrentAnimatorClipInfo(0)[0].clip.name;
+                    Debug.Log(currentClipName);
+
+                    if (Time.time < attackStartTime + attackSlideDuration && currentClipName == "LittleAdventurerAndie_ATTACK_01")
+                    {
+                        Debug.Log("K");
+                        float timePassed = Time.time - attackStartTime;
+                        float lerpTime = timePassed / attackSlideDuration;
+                        _movementVelocity = Vector3.Lerp(transform.forward, Vector3.zero, lerpTime);
+                    }
+
+                    if(_inputManager.isMouseButtonDown && _characterController.isGrounded)
+                    {
+                        float currentClipPassedTime = _animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
+
+                        if (currentClipName != "LittleAdventurerAndie_ATTACK_03" && currentClipPassedTime > 0.5f && currentClipPassedTime < 0.8f)
+                        {
+                            CalculatePlayerMovement();
+                        }
+                    }
+                }
+                else
+                {
+                    //if (Time.time < enemyAttackkTurnStartTime + enemyAttackTurnDuration)
+                    //{
+                    //    float timePassed = Time.time - enemyAttackkTurnStartTime;
+                    //    float lerpTime = timePassed / enemyAttackTurnDuration;
+                    //    Vector3 dir = _targetPlayer.position - transform.position;
+                    //    Quaternion look = Quaternion.LookRotation(dir);
+                    //    transform.rotation = Quaternion.Slerp(transform.rotation, look, lerpTime);
+                    //}
+                    //else
+                    //{
+                    //    _animator.SetTrigger("Attack");
+                    //}
+                }
+
+                break;
+
+            case State.Dead:
+                return;
+
+            case State.BeingHit:
+                
+                if(_impactOnCharacter.magnitude > 0.2f)
+                {
+                    _movementVelocity = _impactOnCharacter * Time.deltaTime;
+                }
+
+                _impactOnCharacter = Vector3.Lerp(_impactOnCharacter, Vector3.zero, Time.deltaTime * 5);
+
                 break;
         }
 
@@ -68,10 +166,7 @@ public class Locomotion : MonoBehaviour
             CalculateGravityUpdate();
             _characterController.Move(_movementVelocity);
 
-            if (!_inputManager.isMouseButtonDown)
-            {
-                SwitchToState(State.Normal);
-            }
+            _movementVelocity = Vector3.zero;
         }
     }
 
@@ -80,6 +175,7 @@ public class Locomotion : MonoBehaviour
         if (_inputManager.isMouseButtonDown && _characterController.isGrounded)
         {
             SwitchToState(State.Attacking);
+            return;
         }
 
         _movementVelocity = new Vector3(_inputManager.movementInput.horizontal, 0f, _inputManager.movementInput.vertical);
@@ -107,6 +203,8 @@ public class Locomotion : MonoBehaviour
         {
             _navMeshAgent.SetDestination(transform.position);
             _animator.SetFloat("Speed", 0f);
+
+            SwitchToState(State.Attacking);
         }
     }
 
@@ -126,11 +224,11 @@ public class Locomotion : MonoBehaviour
         _movementVelocity += verticalVelocity * Vector3.up * Time.deltaTime;
     }
 
-    private void SwitchToState(State newState)
+    public void SwitchToState(State newState)
     {
         // Clear Cache
-        _inputManager.isMouseButtonDown = false;
-
+        if (_isPlayer)
+            _inputManager.isMouseButtonDown = false;
 
         // Current State
         switch (currentState)
@@ -139,26 +237,189 @@ public class Locomotion : MonoBehaviour
                 break;
 
             case State.Attacking:
+
+                _damageCaster.DisableDamageCaster();
+
+                if(_isPlayer)
+                {
+                    _playerVFXManager.StopBlade();
+                }
+                break;
+
+            case State.Dead:
+                return;
+
+            case State.BeingHit:
                 break;
         }
 
-
         // New State
-        switch (currentState)
+        switch (newState)
         {
             case State.Normal:
                 break;
 
             case State.Attacking:
+                if(!_isPlayer)
+                {
+                    enemyAttackkTurnStartTime = Time.time;
+                    Quaternion newRotation = Quaternion.LookRotation(_targetPlayer.position - transform.position);
+                    transform.rotation = newRotation;
+                }
+
+                _animator.SetTrigger("Attack");
+
+                if (_isPlayer)
+                {
+                    attackStartTime = Time.time;    
+                }
+                break;
+
+            case State.Dead:
+                _characterController.enabled = false;
+                _animator.SetTrigger("Dead");
+                StartCoroutine(MaterialDissolve());
+                break;
+
+            case State.BeingHit:
+                _animator.SetTrigger("BeingHit");
+                _isInvincible = true;
+                StartCoroutine(DelayFalseInvincible());
                 break;
         }
 
-
         currentState = newState;
-
-        Debug.Log("Change To State: " + currentState);
     }
 
+    public void AttackAnimationEnds()
+    {
+        SwitchToState(State.Normal);
+    }
+
+    public void BeingHitAnimationEnds()
+    {
+        SwitchToState(State.Normal);
+    }
+
+    public void ApplyDamage(int damage, Vector3 attackerPos)
+    {
+        // Exit
+        if(_isInvincible)
+        {
+            return;
+        }
+
+        _health.ApplyDamage(damage);
+
+        if (!_isPlayer)
+        {
+            _enemyVFXManager.BeingHitVFX(attackerPos);
+        }
+
+        StartCoroutine(MaterialBlink());
+
+        if (_isPlayer)
+        {
+            SwitchToState(State.BeingHit);
+            AddImpact(attackerPos, 10f);
+        }
+    }
+
+    public void EnableDamageCaster()
+    {
+        _damageCaster.EnableDamageCaster();
+    }
+
+    public void DisableDamageCaster()
+    {
+        _damageCaster.DisableDamageCaster();
+    }
+
+    private IEnumerator MaterialBlink()
+    {
+        _materialPropertyBlock.SetFloat("_blink", 0.4f);
+        _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+
+        yield return new WaitForSeconds(0.2f);
+
+        _materialPropertyBlock.SetFloat("_blink", 0);
+        _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+    }
+
+    private IEnumerator MaterialDissolve()
+    {
+        yield return new WaitForSeconds(2);
+
+        float currentTime = 0;
+        float duration = 2;
+        float dissolve_Start = 20;
+        float dissolve_Target = -10;
+        float dissolve_Current;
+
+        while (currentTime < duration)
+        {
+            currentTime += Time.deltaTime;
+            _materialPropertyBlock.SetFloat("_enableDissolve", 1);
+            dissolve_Current = Mathf.Lerp(dissolve_Start, dissolve_Target, currentTime / duration);
+            _materialPropertyBlock.SetFloat("_dissolve_height", dissolve_Current);
+            _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+            yield return null;
+        }
+
+        DropItem();
+    }
+
+    private IEnumerator DelayFalseInvincible()
+    {
+        yield return new WaitForSeconds(_invincibleDuration);
+        _isInvincible = false;
+
+    }
+
+    private void DropItem()
+    {
+        if(_dropItem != null)
+        {
+            Instantiate(_dropItem, transform.position, Quaternion.identity);
+        }
+    }
+
+    private void AddImpact(Vector3 attackPos, float force)
+    {
+        Vector3 dir = transform.position - attackPos;
+        dir.Normalize();
+        dir.y = 0;
+        _impactOnCharacter = dir * force;
+    }
+
+    public void PickUpItem(PickUp item)
+    {
+        switch (item.type)
+        {
+            case PickUp.ItemType.Heal:
+                AddHealth(item.value);
+                break;
+
+            case PickUp.ItemType.Coin:
+                AddCoin(item.value);
+                break;
+        }
+    }
+
+    private void AddHealth(int health)
+    {
+        _health.AddHealth(health);
+
+        if (_isPlayer)
+        {
+            _playerVFXManager.PlayHeal();
+        }
+    }
+        
+    private void AddCoin(int coin)
+    {
+        _coin += coin;
+    }
 }
 
 
