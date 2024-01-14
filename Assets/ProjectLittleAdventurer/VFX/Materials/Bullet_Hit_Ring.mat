@@ -21,7 +21,8 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bullet_Hit_Ring
-  m_Shader: {fileID: -6465566751694194690, guid: bc987e04d44260541a874e217fa35add, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: bc987e04d44260541a874e217fa35add,
+    type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
@@ -50,7 +51,9 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _QueueControl: 0
+    - _QueueOffset: 0
     m_Colors:
     - _Color: {r: 1.7207954, g: 1.216269, b: 0, a: 1}
   m_BuildTextureStacks: []

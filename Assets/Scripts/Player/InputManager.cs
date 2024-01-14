@@ -46,18 +46,22 @@ namespace Player
     {
         public MovementInput movementInput { get; } = new MovementInput();
         public bool isMouseButtonDown { get; set; }
+        public bool isSpaceDown { get; set; }
     
         private void Update()
         {
             if(!isMouseButtonDown)
                 isMouseButtonDown = Input.GetMouseButtonDown(0);
 
+            if (!isSpaceDown)
+                isSpaceDown = Input.GetKeyDown(KeyCode.Space);
+
             MovementInputUpdate();
         }
 
         private void OnDisable()
         {
-            isMouseButtonDown = false;
+            ClearCache();
             movementInput.SetZero();
         }
 
@@ -67,6 +71,11 @@ namespace Player
             movementInput.horizontal = Input.GetAxisRaw("Horizontal");
         }
 
+        public void ClearCache()
+        {
+            isSpaceDown = false;
+            isMouseButtonDown = false;
+        }
     }
 }
 

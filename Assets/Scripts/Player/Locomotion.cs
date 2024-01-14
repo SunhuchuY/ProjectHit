@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using DG.Tweening;
 
 public class Locomotion : MonoBehaviour
 {
@@ -16,16 +17,15 @@ public class Locomotion : MonoBehaviour
     // Player
     [SerializeField] private Player.VFXManager _playerVFXManager;
 
+    // Slide
+    [Header("Player Slide")]
+    [SerializeField] private float _slideSpeed = 4f;
+
     // Enemy
     [SerializeField] private bool _isPlayer = true;
     [SerializeField] private Enemy.VFXManager _enemyVFXManager;
     private UnityEngine.AI.NavMeshAgent _navMeshAgent;
     private Transform _targetPlayer;
-
-    // Attack Slide
-    private float enemyAttackkTurnStartTime;
-    [SerializeField] private float enemyAttackTurnDuration = 0.4f;
-    [SerializeField] private float enemyAttackTurnSpeed = 0.06f;
 
     // Health
     private Health _health;
@@ -55,13 +55,18 @@ public class Locomotion : MonoBehaviour
     // Item
     private int _coin;
 
+    // Spawn
+    [Header("Spawn")]
+    private float _spawnDuration = 2f;
+    private float _spawnTime;
+
 
     public enum State
     {
-        Normal, Attacking, Dead, BeingHit
+        Normal, Attacking, Dead, BeingHit, Slide, Spawn
     }
 
-    private State currentState = State.Normal;
+    public State currentState { get; private set; } = State.Normal;
 
 
     private void Awake()
@@ -84,6 +89,8 @@ public class Locomotion : MonoBehaviour
             _navMeshAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
             _navMeshAgent.speed = _moveSpeed;
             _targetPlayer = GameObject.FindWithTag("Player").transform;
+
+            SwitchToState(State.Spawn);
         }
     }
 
@@ -112,7 +119,6 @@ public class Locomotion : MonoBehaviour
 
                     if (Time.time < attackStartTime + attackSlideDuration && currentClipName == "LittleAdventurerAndie_ATTACK_01")
                     {
-                        Debug.Log("K");
                         float timePassed = Time.time - attackStartTime;
                         float lerpTime = timePassed / attackSlideDuration;
                         _movementVelocity = Vector3.Lerp(transform.forward, Vector3.zero, lerpTime);
@@ -128,22 +134,6 @@ public class Locomotion : MonoBehaviour
                         }
                     }
                 }
-                else
-                {
-                    //if (Time.time < enemyAttackkTurnStartTime + enemyAttackTurnDuration)
-                    //{
-                    //    float timePassed = Time.time - enemyAttackkTurnStartTime;
-                    //    float lerpTime = timePassed / enemyAttackTurnDuration;
-                    //    Vector3 dir = _targetPlayer.position - transform.position;
-                    //    Quaternion look = Quaternion.LookRotation(dir);
-                    //    transform.rotation = Quaternion.Slerp(transform.rotation, look, lerpTime);
-                    //}
-                    //else
-                    //{
-                    //    _animator.SetTrigger("Attack");
-                    //}
-                }
-
                 break;
 
             case State.Dead:
@@ -159,10 +149,24 @@ public class Locomotion : MonoBehaviour
                 _impactOnCharacter = Vector3.Lerp(_impactOnCharacter, Vector3.zero, Time.deltaTime * 5);
 
                 break;
+
+            case State.Slide:
+                _movementVelocity = transform.forward * _slideSpeed * Time.deltaTime;
+
+                break;
+
+            case State.Spawn:
+                _spawnTime -= Time.deltaTime;
+                if (_spawnTime <= 0)
+                {
+                    SwitchToState(State.Normal);
+                }
+                break;
         }
 
         if(_isPlayer)
         {
+            // memo: Move And Gravity
             CalculateGravityUpdate();
             _characterController.Move(_movementVelocity);
 
@@ -177,8 +181,13 @@ public class Locomotion : MonoBehaviour
             SwitchToState(State.Attacking);
             return;
         }
+        else if (_inputManager.isSpaceDown && _characterController.isGrounded)
+        {
+            SwitchToState(State.Slide);
+            return;
+        }
 
-        _movementVelocity = new Vector3(_inputManager.movementInput.horizontal, 0f, _inputManager.movementInput.vertical);
+            _movementVelocity = new Vector3(_inputManager.movementInput.horizontal, 0f, _inputManager.movementInput.vertical);
         _movementVelocity.Normalize();
         _movementVelocity = Quaternion.Euler(0f, -45f, 0f) * _movementVelocity;
 
@@ -228,7 +237,9 @@ public class Locomotion : MonoBehaviour
     {
         // Clear Cache
         if (_isPlayer)
-            _inputManager.isMouseButtonDown = false;
+        {
+            _inputManager.ClearCache();
+        }
 
         // Current State
         switch (currentState)
@@ -238,7 +249,10 @@ public class Locomotion : MonoBehaviour
 
             case State.Attacking:
 
-                _damageCaster.DisableDamageCaster();
+                if(_damageCaster != null)
+                {
+                    _damageCaster.DisableDamageCaster();
+                }
 
                 if(_isPlayer)
                 {
@@ -251,6 +265,13 @@ public class Locomotion : MonoBehaviour
 
             case State.BeingHit:
                 break;
+
+            case State.Slide:
+                break;
+
+            case State.Spawn:
+                _isInvincible = false;
+                break;
         }
 
         // New State
@@ -262,16 +283,20 @@ public class Locomotion : MonoBehaviour
             case State.Attacking:
                 if(!_isPlayer)
                 {
-                    enemyAttackkTurnStartTime = Time.time;
-                    Quaternion newRotation = Quaternion.LookRotation(_targetPlayer.position - transform.position);
-                    transform.rotation = newRotation;
+                    Vector3 dir = _targetPlayer.position - transform.position; // 타겟 방향
+                    Quaternion targetRotation = Quaternion.LookRotation(dir); // 목표 회전
+                    transform.DORotateQuaternion(targetRotation, 0.3f)
+                        .OnComplete(() => 
+                        {
+                            _animator.SetTrigger("Attack");
+                        });
                 }
 
-                _animator.SetTrigger("Attack");
 
                 if (_isPlayer)
                 {
                     attackStartTime = Time.time;    
+                    _animator.SetTrigger("Attack");
                 }
                 break;
 
@@ -286,9 +311,24 @@ public class Locomotion : MonoBehaviour
                 _isInvincible = true;
                 StartCoroutine(DelayFalseInvincible());
                 break;
+
+            case State.Slide:
+                _animator.SetTrigger("Slide");
+                break;
+
+            case State.Spawn:
+                _isInvincible = true;
+                _spawnTime = _spawnDuration;
+                StartCoroutine(MaterialAppear());
+                break;
         }
 
         currentState = newState;
+    }
+
+    public void SlideAnimationEnds()
+    {
+        SwitchToState(State.Normal);
     }
 
     public void AttackAnimationEnds()
@@ -356,10 +396,12 @@ public class Locomotion : MonoBehaviour
         float dissolve_Target = -10;
         float dissolve_Current;
 
+        _materialPropertyBlock.SetFloat("_enableDissolve", 1);
+        _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+
         while (currentTime < duration)
         {
             currentTime += Time.deltaTime;
-            _materialPropertyBlock.SetFloat("_enableDissolve", 1);
             dissolve_Current = Mathf.Lerp(dissolve_Start, dissolve_Target, currentTime / duration);
             _materialPropertyBlock.SetFloat("_dissolve_height", dissolve_Current);
             _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
@@ -419,6 +461,41 @@ public class Locomotion : MonoBehaviour
     private void AddCoin(int coin)
     {
         _coin += coin;
+    }
+
+    public void RotateToTarget()
+    {
+        if (currentState == State.Attacking)
+        {
+            Vector3 dir = (_targetPlayer.position - transform.position).normalized;
+            transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+        }
+    }
+
+    private IEnumerator MaterialAppear()
+    {
+        float currentTime = 0;
+        float duration = _spawnDuration;
+        float dissolve_Start = -10;
+        float dissolve_Target = 20;
+        float dissolve_Current;
+
+
+        _materialPropertyBlock.SetFloat("_enableDissolve", 1);
+        _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+
+        while (currentTime < duration)
+        {
+            currentTime += Time.deltaTime;
+            _materialPropertyBlock.SetFloat("_enableDissolve", 1);
+            dissolve_Current = Mathf.Lerp(dissolve_Start, dissolve_Target, currentTime / duration);
+            _materialPropertyBlock.SetFloat("_dissolve_height", dissolve_Current);
+            _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+            yield return null;
+        }
+
+        _materialPropertyBlock.SetFloat("_enableDissolve", 0);
+        _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
     }
 }
 
