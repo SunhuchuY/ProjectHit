@@ -1,14 +1,35 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class Health : MonoBehaviour
 {
     [SerializeField] private int _max;
-    
-    private int _cur;
-    private Locomotion _locomotion;
+    [SerializeField] private UnityEvent<float> _curHealthChangedEvent;
 
+    private int p_cur;
+    private int _cur
+    {
+        get
+        {
+            return p_cur;
+        }
+
+        set
+        {
+            p_cur = Mathf.Clamp(value, 0, _max);
+
+            // in case: dead
+            if(p_cur <= 0)
+            {
+                _locomotion.SwitchToState(Locomotion.State.Dead);
+            }
+
+            _curHealthChangedEvent.Invoke((float)p_cur / (float)_max);
+        }
+    }
+    private Locomotion _locomotion;
 
     private void Awake()
     {
@@ -19,26 +40,10 @@ public class Health : MonoBehaviour
     public void ApplyDamage(int damage)
     {
         _cur -= damage;
-        Debug.Log(gameObject.name + ", current health: " + _cur);
-
-        CheckHealth();
-    }
-
-    private void CheckHealth()
-    {
-        if(_cur <= 0)
-        {
-            _locomotion.SwitchToState(Locomotion.State.Dead);
-        }
     }
 
     public void AddHealth(int health)
     {
         _cur += health;
-
-        if (_cur > _max)
-        {
-            _cur = _max;
-        }
     }
 }

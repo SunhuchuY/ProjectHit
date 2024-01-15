@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using DG.Tweening;
+using Player;
 
 public class Locomotion : MonoBehaviour
 {
@@ -53,7 +54,7 @@ public class Locomotion : MonoBehaviour
     private float _invincibleDuration;
 
     // Item
-    private int _coin;
+    [SerializeField] private Coin _coin;
 
     // Spawn
     [Header("Spawn")]
@@ -115,7 +116,6 @@ public class Locomotion : MonoBehaviour
                 if (_isPlayer)
                 {
                     string currentClipName = _animator.GetCurrentAnimatorClipInfo(0)[0].clip.name;
-                    Debug.Log(currentClipName);
 
                     if (Time.time < attackStartTime + attackSlideDuration && currentClipName == "LittleAdventurerAndie_ATTACK_01")
                     {
@@ -140,13 +140,6 @@ public class Locomotion : MonoBehaviour
                 return;
 
             case State.BeingHit:
-                
-                if(_impactOnCharacter.magnitude > 0.2f)
-                {
-                    _movementVelocity = _impactOnCharacter * Time.deltaTime;
-                }
-
-                _impactOnCharacter = Vector3.Lerp(_impactOnCharacter, Vector3.zero, Time.deltaTime * 5);
 
                 break;
 
@@ -164,13 +157,28 @@ public class Locomotion : MonoBehaviour
                 break;
         }
 
-        if(_isPlayer)
+        // execute: impact
+        if (_impactOnCharacter.magnitude > 0.2f)
+        {
+            _movementVelocity = _impactOnCharacter * Time.deltaTime;
+        }
+        _impactOnCharacter = Vector3.Lerp(_impactOnCharacter, Vector3.zero, Time.deltaTime * 5);
+
+        if (_isPlayer)
         {
             // memo: Move And Gravity
             CalculateGravityUpdate();
             _characterController.Move(_movementVelocity);
 
             _movementVelocity = Vector3.zero;
+        }
+        else
+        {
+            if (currentState != State.Normal)
+            {
+                _characterController.Move(_movementVelocity);
+                _movementVelocity = Vector3.zero;
+            }
         }
     }
 
@@ -297,6 +305,7 @@ public class Locomotion : MonoBehaviour
                 {
                     attackStartTime = Time.time;    
                     _animator.SetTrigger("Attack");
+                    RotateToCursor();
                 }
                 break;
 
@@ -362,6 +371,10 @@ public class Locomotion : MonoBehaviour
         {
             SwitchToState(State.BeingHit);
             AddImpact(attackerPos, 10f);
+        }
+        else
+        {
+            AddImpact(attackerPos, 2.5f);
         }
     }
 
@@ -460,7 +473,10 @@ public class Locomotion : MonoBehaviour
         
     private void AddCoin(int coin)
     {
-        _coin += coin;
+        if(_coin != null)
+        {
+            _coin.AddCoin(coin);
+        }
     }
 
     public void RotateToTarget()
@@ -496,6 +512,35 @@ public class Locomotion : MonoBehaviour
 
         _materialPropertyBlock.SetFloat("_enableDissolve", 0);
         _skinnedMeshRenderer.SetPropertyBlock(_materialPropertyBlock);
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (_isPlayer)
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            if(Physics.Raycast(ray, out hit, 1000, 1 << LayerMask.NameToLayer("MouseCursor")))
+            {
+                Vector3 cursorPos = hit.point;
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(cursorPos, 1f);
+            }
+        }
+
+    }
+
+    private void RotateToCursor()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);    
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, 1000, 1 << LayerMask.NameToLayer("MouseCursor")))
+        {
+            Vector3 cursorPos = hit.point;
+            transform.rotation = Quaternion.LookRotation((cursorPos - transform.position).normalized, Vector3.up);
+        }
     }
 }
 
