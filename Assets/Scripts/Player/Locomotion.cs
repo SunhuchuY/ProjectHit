@@ -72,8 +72,11 @@ public class Locomotion : MonoBehaviour
 
     private void Awake()
     {
-        _characterController = GetComponent<CharacterController>();  
+        _characterController = GetComponent<CharacterController>(); 
+
         _animator = GetComponent<Animator>();
+        
+        
         _health = GetComponent<Health>();
         _damageCaster = GetComponentInChildren<DamageCaster>(); 
 
@@ -128,7 +131,7 @@ public class Locomotion : MonoBehaviour
                     {
                         float currentClipPassedTime = _animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
 
-                        if (currentClipName != "LittleAdventurerAndie_ATTACK_03" && currentClipPassedTime > 0.5f && currentClipPassedTime < 0.8f)
+                        if (currentClipName != "LittleAdventurerAndie_ATTACK_03" && currentClipPassedTime > 0.8f && currentClipPassedTime < 1)
                         {
                             CalculatePlayerMovement();
                         }
