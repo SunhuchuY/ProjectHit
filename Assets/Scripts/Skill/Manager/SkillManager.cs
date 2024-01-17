@@ -1,52 +1,66 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.TextCore.Text;
+using UnityEngine.UI;
 
 public class SkillManager : MonoBehaviour
 {
-    public SkillInventory inventory { get; private set; } = new SkillInventory();
+    [SerializeField] private SkillInventory skillInventory;
+    [SerializeField] private SKillInputManager sKillInputManager;
+    [SerializeField] private SkillUI_Manager skillUI_Manager;
 
     private void Awake()
     {
-        //inventory.InsertSkill(0, new InvincibleSkill());
-        //StartCoroutine(DealyTest());
+        skillInventory.InsertSkill(0, new InvincibleSkill());
+        skillInventory.InsertSkill(1, new InvincibleSkill());
+        skillInventory.InsertSkill(2, new InvincibleSkill());
+        skillInventory.InsertSkill(3, new InvincibleSkill());
     }
-    
+
+    private void Update()
+    {
+        for (int i = 0; i < sKillInputManager.isInput.Length; i++)
+        {
+            // condition: skill can use
+            if (sKillInputManager.isInput[i] && !skillInventory.skills[i].isCoolTime)
+            {
+                sKillInputManager.isInput[i] = false;
+                skillInventory.skills[i].isCoolTime = true;
+                skillInventory.skills[i].Current = 0;
+                skillInventory.skills[i].Activate();
+                skillInventory.skills[i].ApplyEffects();
+                skillUI_Manager.OnSkillCoolTIme(i);
+            }
+
+            if (skillInventory.skills[i].isCoolTime)
+            {
+                // update: cool time
+                skillInventory.skills[i].Current += Time.deltaTime;
+                skillUI_Manager.SkillCoolTimeUpdate(i, 1 - skillInventory.skills[i].CoolProgress);
+
+                // condition: ending coolTime
+                if (skillInventory.skills[i].Current > skillInventory.skills[i].Cooldown)
+                {
+                    sKillInputManager.isInput[i] = false;
+                    skillInventory.skills[i].isCoolTime = false;
+                    skillInventory.skills[i].Current = 0;
+                    skillUI_Manager.OffSkillCoolTIme(i);
+                }
+            }
+        }
+    }
+
     private IEnumerator DealyTest()
     {
         yield return new WaitForSeconds(3);
-        inventory.RemoveSkill(0);
-    }
-}
-
-public class SkillInventory
-{
-    public Skill[] skills { get; private set; } = new Skill[4];
-
-    public void InsertSkill(int index, Skill skill)
-    {
-        skills[index] = skill;
-    }
-
-    public void RemoveSkill(int index)
-    {
-        if (skills[index] == null)
-        {
-            Debug.Log("NULL");
-            return;
-        }
-        else
-        {
-            Debug.Log("NOT NULL");
-            skills[index].Dispose();
-            skills[index] = null;
-        }
+        skillInventory.RemoveSkill(0);
     }
 }
 
@@ -54,14 +68,21 @@ public interface ISkill
 {
     string Name { get; }
     float Cooldown { get; }
+    float Current { get; }
+    float CoolProgress { get; }
+    bool isCoolTime { get; }
     void Activate();
-    void ApplyEffects(Character target);
+    void ApplyEffects();
 }
 
 public abstract class Skill : ISkill, IDisposable
 {
     public string Name { get; protected set; }
     public float Cooldown { get; protected set; }
+    public float Current { get; set; }
+    public float CoolProgress { get => Current / Cooldown; }
+    public bool isCoolTime { get; set; } = false;
+
     private AsyncOperationHandle<GameObject> handle;
     public GameObject effectPrefab { get; protected set; }
 
@@ -79,7 +100,7 @@ public abstract class Skill : ISkill, IDisposable
     {
         if (handle.Status == AsyncOperationStatus.Succeeded)
         {
-            effectPrefab = UnityEngine.Object.Instantiate(handle.Result);
+            effectPrefab = handle.Result;
         }
         else
         {
@@ -89,13 +110,12 @@ public abstract class Skill : ISkill, IDisposable
 
 
     public abstract void Activate();
-    public abstract void ApplyEffects(Character target);
+    public abstract void ApplyEffects();
 
     public void Dispose()
     {
         GC.SuppressFinalize(this);
 
-        //UnityEngine.Object.Destroy(effectPrefab);
         if (handle.IsValid())
         {
             UnityEngine.Object.Destroy(effectPrefab);
@@ -110,18 +130,22 @@ public abstract class Skill : ISkill, IDisposable
 
 public class InvincibleSkill : Skill
 {
-    public readonly float duration;
+    private readonly Transform player;
 
     public InvincibleSkill() : base(name: "무적", cooldown: 20f, AddressablePrefabName: "InvincibleEffect")
     {
+        player = GameObject.FindWithTag("Player").transform;
     }
 
     public override void Activate()
     {
         // 스킬 활성화 로직1
+        GameObject prefab = UnityEngine.Object.Instantiate(effectPrefab, player.transform.position, Quaternion.identity, player);
+        float duration = prefab.GetComponent<ParticleSystem>().duration;
+        UnityEngine.Object.Destroy(prefab, duration);
     }
 
-    public override void ApplyEffects(Character target)
+    public override void ApplyEffects()
     {
         // 타겟에게 효과 적용
     }

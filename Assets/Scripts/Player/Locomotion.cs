@@ -131,10 +131,10 @@ public class Locomotion : MonoBehaviour
                     {
                         float currentClipPassedTime = _animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
 
-                        if (currentClipName != "LittleAdventurerAndie_ATTACK_03" && currentClipPassedTime > 0.8f && currentClipPassedTime < 1)
-                        {
-                            CalculatePlayerMovement();
-                        }
+                        //if (currentClipName != "LittleAdventurerAndie_ATTACK_03" && currentClipPassedTime > 0.8f && currentClipPassedTime < 1)
+                        //{
+                        //    CalculatePlayerMovement();
+                        //}
                     }
                 }
                 break;
