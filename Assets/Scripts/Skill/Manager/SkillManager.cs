@@ -14,8 +14,8 @@ public class SkillManager : MonoBehaviour
 
     private void Awake()
     {
-        inventory.InsertSkill(0, new InvincibleSkill());
-        StartCoroutine(DealyTest());
+        //inventory.InsertSkill(0, new InvincibleSkill());
+        //StartCoroutine(DealyTest());
     }
     
     private IEnumerator DealyTest()
@@ -100,6 +100,8 @@ public abstract class Skill : ISkill, IDisposable
         {
             UnityEngine.Object.Destroy(effectPrefab);
             Addressables.Release(handle);
+            Addressables.ReleaseInstance(effectPrefab);
+            effectPrefab = null;
         }
 
     }
