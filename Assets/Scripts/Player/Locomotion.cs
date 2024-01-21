@@ -5,10 +5,16 @@ using UnityEngine;
 using DG.Tweening;
 using Player;
 
+
+public class PlayerController
+{
+    
+}
+
 public class Locomotion : MonoBehaviour
 {
-    [SerializeField] private float _gravity = -9.8f;
     [SerializeField] private float _moveSpeed = 5f;
+    [SerializeField] private float _gravity = -9.8f;
 
     private Vector3 _movementVelocity;
     private Animator _animator;
@@ -34,7 +40,7 @@ public class Locomotion : MonoBehaviour
     // DamageCaster
     private DamageCaster _damageCaster;
 
-    // Attack Slide
+    // Attack Slide, player
     private float attackStartTime;
     [SerializeField] private float attackSlideDuration = 0.4f;
     [SerializeField] private float attackSlideSpeed = 0.06f;
@@ -46,17 +52,17 @@ public class Locomotion : MonoBehaviour
     private SkinnedMeshRenderer _skinnedMeshRenderer;
     private MaterialPropertyBlock _materialPropertyBlock;
 
-    // Drop Item
+    // Drop Item, monster
     [SerializeField] private GameObject _dropItem;
 
     // Invincible
     private bool _isInvincible;
     private float _invincibleDuration;
 
-    // Item
+    // Item, player
     [SerializeField] private Coin _coin;
 
-    // Spawn
+    // Spawn, monster
     [Header("Spawn")]
     private float _spawnDuration = 2f;
     private float _spawnTime;
@@ -73,13 +79,9 @@ public class Locomotion : MonoBehaviour
     private void Awake()
     {
         _characterController = GetComponent<CharacterController>(); 
-
         _animator = GetComponent<Animator>();
-        
-        
         _health = GetComponent<Health>();
         _damageCaster = GetComponentInChildren<DamageCaster>(); 
-
         _skinnedMeshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
         _materialPropertyBlock = new MaterialPropertyBlock();
         _skinnedMeshRenderer.GetPropertyBlock(_materialPropertyBlock);
@@ -198,7 +200,7 @@ public class Locomotion : MonoBehaviour
             return;
         }
 
-            _movementVelocity = new Vector3(_inputManager.movementInput.horizontal, 0f, _inputManager.movementInput.vertical);
+        _movementVelocity = new Vector3(_inputManager.movementInput.horizontal, 0f, _inputManager.movementInput.vertical);
         _movementVelocity.Normalize();
         _movementVelocity = Quaternion.Euler(0f, -45f, 0f) * _movementVelocity;
 
@@ -431,7 +433,6 @@ public class Locomotion : MonoBehaviour
     {
         yield return new WaitForSeconds(_invincibleDuration);
         _isInvincible = false;
-
     }
 
     private void DropItem()
@@ -531,7 +532,6 @@ public class Locomotion : MonoBehaviour
                 Gizmos.DrawWireSphere(cursorPos, 1f);
             }
         }
-
     }
 
     private void RotateToCursor()

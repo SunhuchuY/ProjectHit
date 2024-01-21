@@ -8,33 +8,42 @@ public class Health : MonoBehaviour
     [SerializeField] private int _max;
     [SerializeField] private UnityEvent<float> _curHealthChangedEvent;
 
-    private int p_cur;
+    private event System.Action _deadChangedEvent;
+
+    private int m_cur;
     private int _cur
     {
         get
         {
-            return p_cur;
+            return m_cur;
         }
 
         set
         {
-            p_cur = Mathf.Clamp(value, 0, _max);
+            m_cur = Mathf.Clamp(value, 0, _max);
 
             // in case: dead
-            if(p_cur <= 0)
+            if(m_cur <= 0)
             {
-                _locomotion.SwitchToState(Locomotion.State.Dead);
+                _deadChangedEvent?.Invoke();
             }
 
-            _curHealthChangedEvent.Invoke((float)p_cur / (float)_max);
+            _curHealthChangedEvent.Invoke((float)m_cur / (float)_max);
         }
     }
-    private Locomotion _locomotion;
 
     private void Awake()
     {
         _cur = _max;
-        _locomotion = GetComponent<Locomotion>();    
+
+        if(GetComponent<Locomotion>() != null)
+        {
+            _deadChangedEvent += () => GetComponent<Locomotion>().SwitchToState(Locomotion.State.Dead);
+        }
+        else
+        {
+            _deadChangedEvent += () => GetComponent<Character>().ChangeState(Character.CommonState.Dead);
+        }
     }
 
     public void ApplyDamage(int damage)

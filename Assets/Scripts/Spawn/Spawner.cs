@@ -21,7 +21,7 @@ public class Spawner : MonoBehaviour
         _spawnList = new List<Locomotion>();
     }
 
-    private void Update()
+    /*private void Update()
     {
         if(!_hasSpawn || _spawnList.Count == 0)
         {
@@ -43,7 +43,7 @@ public class Spawner : MonoBehaviour
         {
             _allSpawnDeadEvent?.Invoke();
         }
-    }
+    }*/
 
     private void OnTriggerEnter(Collider other)
     {
@@ -66,8 +66,9 @@ public class Spawner : MonoBehaviour
         {
             if(point.enemyToSpawn != null)
             {
-                 Locomotion locomotion = Instantiate(point.enemyToSpawn, point.transform.position, point.transform.rotation).GetComponent<Locomotion>();
-                _spawnList.Add(locomotion);
+                 //Locomotion locomotion = /
+                    Instantiate(point.enemyToSpawn, point.transform.position, point.transform.rotation);
+               // _spawnList.Add(locomotion);
             }
         }
     }

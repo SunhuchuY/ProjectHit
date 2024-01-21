@@ -22,6 +22,7 @@ public class DamageCaster : MonoBehaviour
         if(other.CompareTag(targetTag) && !_targetList.Contains(other))
         {
             Locomotion cc = other.GetComponent<Locomotion>();
+            DamageReceiver receiver = other.GetComponent<DamageReceiver>();
 
             if(cc != null)
             {
@@ -33,12 +34,17 @@ public class DamageCaster : MonoBehaviour
                 }
 
             }
+            else if(receiver != null)
+            {
+                Debug.Log("Testddddddddddddddd");
+                receiver.ApplyDamage(_damage);
+            }       
 
             _targetList.Add(other);
         }
     }
 
-
+        
     public void EnableDamageCaster()
     {
         _targetList.Clear();
