@@ -50,7 +50,7 @@ public class GameManager : MonoBehaviour
     {
 #if UNITY_EDITOR
         Debug.Log("GameRestart");
-#endif
+#endif  
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         GamePlaying();
     }

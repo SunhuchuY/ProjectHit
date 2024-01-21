@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class SkillInventory : MonoBehaviour
 {
-    public Skill[] skills { get; private set; } = new Skill[4];
+    public SkillBase[] skills { get; private set; } = new SkillBase[4];
 
-    public void InsertSkill(int index, Skill skill)
+    public void InsertSkill(int index, SkillBase skill)
     {
         skills[index] = skill;
     }
