@@ -187,7 +187,6 @@ public class EnemySpawnState : BaseEnemyState ,IState
 }
 
 
-
 public class StateMachine
 {
     public IState _currentState { get; private set; }

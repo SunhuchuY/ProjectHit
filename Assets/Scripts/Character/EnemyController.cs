@@ -23,7 +23,7 @@ public class EnemyController : Character
         _targetPlayer = GameObject.FindWithTag("Player").transform;
 
         SM = new EnemySM(this);
-        base.Initilize(SM);
+        base.Initilize(SM, false);
     }
 
     private void Start()
@@ -31,9 +31,9 @@ public class EnemyController : Character
         SM.ChangeState<EnemySpawnState>();
     }
 
-    protected override void Initilize(StateMachine sm)
+    protected override void Initilize(StateMachine sm, bool isPlayer)
     {
-        base.Initilize(sm);
+        base.Initilize(sm, false);
     }
 
 

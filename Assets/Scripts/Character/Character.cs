@@ -17,7 +17,7 @@ public abstract class Character : MonoBehaviour
     [SerializeField] protected float _invincibleDuration;
 
     // Being Hit
-    public Vector3 _impactOnCharacter;
+    public Vector3 _impactOnCharacter;  
 
     // Health
     protected Health _health;
